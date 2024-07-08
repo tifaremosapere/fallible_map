@@ -1,0 +1,19 @@
+[package]
+name = "fallible_map"
+version = "0.1.0"
+authors = ["Dario Cancelliere <dario@tifaremosapere.it>"]
+edition = "2018"
+license = "MIT"
+description = "Utilities for fallible mapping over `Option` and iterators using functions that can return `Result`s."
+repository = "https://github.com/tifaremosapere/fallible_map"
+homepage = "https://github.com/tifaremosapere/fallible_map"
+documentation = "https://docs.rs/fallible_map_ext"
+readme = "README.md"
+keywords = ["fallible", "mapping", "option", "result", "error-handling"]
+categories = ["data-structures", "algorithms", "rust-patterns"]
+exclude = ["/target"]
+
+[dependencies]
+
+[features]
+default = []
