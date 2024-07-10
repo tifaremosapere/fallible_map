@@ -20,7 +20,7 @@ These extensions can be useful in scenarios where operations may fail, and error
 
 - **ExtractOption trait:** A helper trait to extract the inner value of an optional container;
 - **FallibleMapExt trait:** Extends `Option` with methods for fallible operations, such as `try_map`, `try_unwrap_or`, and `try_and_then`;
-- **TryMapIteratorExt trait:** Extends iterators with a `try_map` method, allowing the use of functions that return `Result`s during iteration.
+- **FallibleMapIteratorExt trait:** Extends iterators with a `try_map` method, allowing the use of functions that return `Result`s during iteration, providing an iterator adaptor for seamless chaining and collection.
 
 ## Installation
 
@@ -57,31 +57,6 @@ fn main() -> Result<(), String> {
 }
 ```
 
-#### Using TryMapIteratorExt with `Iterator`
-
-```rust
-use fallible_map::TryMapIteratorExt;
-
-fn main() -> Result<(), String> {
-    let numbers = vec![1, 2, 3, 4, 5];
-
-    let mapped_numbers: Result<Vec<i32>, String> = numbers.into_iter().try_map(|x| {
-        if x % 2 == 0 {
-            Ok(x * 2)
-        } else {
-            Err(format!("Failed to process {}", x))
-        }
-    });
-
-    match mapped_numbers {
-        Ok(nums) => println!("Mapped successfully: {:?}", nums),
-        Err(e) => println!("Error occurred: {}", e),
-    }
-
-    Ok(())
-}
-```
-
 #### Using FallibleMapExt with `try_and_then`
 
 ```rust
@@ -111,6 +86,31 @@ fn main() -> Result<(), String> {
     });
 
     assert_eq!(result, Ok(None));
+
+    Ok(())
+}
+```
+
+#### Using FallibleMapIteratorExt with `Iterator`
+
+```rust
+use fallible_map::FallibleMapIteratorExt;
+
+fn main() -> Result<(), String> {
+    let numbers = vec![1, 2, 3, 4, 5];
+
+    let mapped_numbers: Result<Vec<i32>, String> = numbers.into_iter().try_map(|x| {
+        if x % 2 == 0 {
+            Ok(x * 2)
+        } else {
+            Err(format!("Failed to process {}", x))
+        }
+    }).collect();
+
+    match mapped_numbers {
+        Ok(nums) => println!("Mapped successfully: {:?}", nums),
+        Err(e) => println!("Error occurred: {}", e),
+    }
 
     Ok(())
 }

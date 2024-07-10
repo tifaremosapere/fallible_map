@@ -26,7 +26,7 @@ impl<T> ExtractOption<T> for Option<T> {
 /// - `T`: The input container's value type
 /// - `U`: The output container's value type
 /// - `E`: The possible error type during the mapping
-pub trait FallibleMapExt<T, U, E> {
+pub trait FallibleMapExt<T, E> {
     /// Attempt to map a function over an optional value.
     ///
     /// # Parameters
@@ -36,7 +36,7 @@ pub trait FallibleMapExt<T, U, E> {
     /// # Returns
     ///
     /// A `Result` containing an `Option<U>`, or an error `E`.
-    fn try_map<F>(self, f: F) -> Result<Option<U>, E>
+    fn try_map<F, U>(self, f: F) -> Result<Option<U>, E>
     where
         F: FnOnce(T) -> Result<U, E>;
 
@@ -62,17 +62,17 @@ pub trait FallibleMapExt<T, U, E> {
     /// # Returns
     ///
     /// A `Result` containing an `Option<U>`, or an error `E`.
-    fn try_and_then<F>(self, f: F) -> Result<Option<U>, E>
+    fn try_and_then<F, U>(self, f: F) -> Result<Option<U>, E>
     where
         F: FnOnce(T) -> Result<Option<U>, E>;
 }
 
 /// Implementation of `FallibleMapExt` for types implementing `ExtractOption`.
-impl<C, T, U, E> FallibleMapExt<T, U, E> for C
+impl<C, T, E> FallibleMapExt<T, E> for C
 where
     C: ExtractOption<T>,
 {
-    fn try_map<F>(self, f: F) -> Result<Option<U>, E>
+    fn try_map<F, U>(self, f: F) -> Result<Option<U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
     {
@@ -92,7 +92,7 @@ where
         }
     }
 
-    fn try_and_then<F>(self, f: F) -> Result<Option<U>, E>
+    fn try_and_then<F, U>(self, f: F) -> Result<Option<U>, E>
     where
         F: FnOnce(T) -> Result<Option<U>, E>,
     {
@@ -103,28 +103,39 @@ where
     }
 }
 
+/// A fallible map iterator that maps a function returning a `Result` over the elements of the underlying iterator.
+pub struct FallibleMapIterator<I, F, B, E> {
+    iter: I,
+    f: F,
+    _marker: std::marker::PhantomData<(B, E)>,
+}
+
+impl<I, F, B, E> FallibleMapIterator<I, F, B, E> {
+    pub fn new(iter: I, f: F) -> Self {
+        FallibleMapIterator {
+            iter,
+            f,
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+/// Implement `Iterator` for `FallibleMap` where the iterator item is a `Result`.
+impl<I, F, B, E> Iterator for FallibleMapIterator<I, F, B, E>
+where
+    I: Iterator,
+    F: FnMut(I::Item) -> Result<B, E>,
+{
+    type Item = Result<B, E>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(&mut self.f)
+    }
+}
+
 /// Extend iterator with fallible map functionality.
-///
-/// This trait provides a fallible version of the `map` method, allowing
-/// the use of functions that return `Result`s during iteration.
-///
-/// # Example
-///
-/// ```
-/// use my_crate::TryMapIteratorExt;
-///
-/// let numbers = vec![1, 2, 3, 4, 5];
-/// let result: Result<Vec<_>, _> = numbers.into_iter().try_map(|num| {
-///     if num % 2 == 0 {
-///         Ok(num * 2)
-///     } else {
-///         Err("Odd number")
-///     }
-/// });
-/// assert_eq!(result, Err("Odd number"));
-/// ```
-pub trait TryMapIteratorExt: Iterator {
-    /// Attempt to map a function over an iterator.
+pub trait FallibleMapIteratorExt: Iterator {
+    /// Attempt to map a function over an iterator, returning a `Result` iterator.
     ///
     /// # Parameters
     ///
@@ -132,26 +143,23 @@ pub trait TryMapIteratorExt: Iterator {
     ///
     /// # Returns
     ///
-    /// A `Result` containing a `Vec<B>`, or an error `E`.
-    fn try_map<B, F, E>(self, f: F) -> Result<Vec<B>, E>
+    /// An iterator where each item is a `Result<B, E>`.
+    fn try_map<B, F, E>(self, f: F) -> FallibleMapIterator<Self, F, B, E>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> Result<B, E>;
 }
 
-/// Implementation of `TryMapIteratorExt` for all iterators.
-impl<I> TryMapIteratorExt for I
+/// Implementation of `FallibleMapIteratorExt` for all iterators.
+impl<I> FallibleMapIteratorExt for I
 where
     I: Iterator,
 {
-    fn try_map<B, F, E>(mut self, mut f: F) -> Result<Vec<B>, E>
+    fn try_map<B, F, E>(self, f: F) -> FallibleMapIterator<Self, F, B, E>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> Result<B, E>,
     {
-        self.try_fold(Vec::new(), |mut results, item| {
-            results.push(f(item)?);
-            Ok(results)
-        })
+        FallibleMapIterator::new(self, f)
     }
 }

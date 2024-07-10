@@ -1,6 +1,6 @@
 [package]
 name = "fallible_map"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Dario Cancelliere <dario@tifaremosapere.it>"]
 edition = "2018"
 license = "MIT"
